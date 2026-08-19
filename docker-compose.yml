@@ -1,0 +1,22 @@
+services:
+  backend:
+    image: node:22
+    container_name: escala_backend
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    ports:
+      - "3000:3000"
+      - "5174:5174"
+    command: npm start
+    tty: true
+
+  postgres:
+    image: postgres:16
+    container_name: escala_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: escala_bombeiros
+    ports:
+      - "5433:5432"

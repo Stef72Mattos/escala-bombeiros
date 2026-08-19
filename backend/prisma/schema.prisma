@@ -1,0 +1,387 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ESCALANTE
+  BOMBEIRO
+}
+
+enum BombeiroStatus {
+  ATIVO
+  INATIVO
+}
+
+enum TipoFeriado {
+  NACIONAL
+  ESTADUAL
+  LOCAL
+}
+
+enum TipoEscala {
+  PRETA
+  VERMELHA
+}
+
+enum StatusEscala {
+  RASCUNHO
+  APROVADA
+  PUBLICADA
+  ARQUIVADA
+}
+
+enum OrigemPlantao {
+  AUTOMATICA
+  MANUAL
+  SUBSTITUICAO
+}
+
+enum StatusIndisponibilidade {
+  PENDENTE
+  APROVADA
+  REJEITADA
+}
+
+enum TipoNotificacao {
+  ESCALA_PUBLICADA
+  ALTERACAO_PLANTAO
+  SUBSTITUICAO
+  ATESTADO
+  FERIAS
+  ALERTA
+}
+
+enum TipoAuditoria {
+  CREATE
+  UPDATE
+  DELETE
+  APPROVE
+  PUBLISH
+  SUBSTITUTE
+  LOGIN
+}
+
+model Usuario {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  senhaHash    String   @map("senha_hash")
+  role         Role
+  ativo        Boolean  @default(true)
+
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  bombeiro     Bombeiro?
+
+  notificacoes Notificacao[]
+
+  auditorias   Auditoria[]
+
+  refreshTokens RefreshToken[]
+
+  indisponibilidadesAvaliadas Indisponibilidade[]
+
+  escalasAprovadas Escala[]
+
+  substituicoesConfirmadas Substituicao[]
+
+  @@map("usuarios")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+
+  usuarioId  String   @map("usuario_id")
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  tokenHash  String   @map("token_hash")
+
+  expiresAt  DateTime @map("expires_at")
+
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([usuarioId])
+
+  @@map("refresh_tokens")
+}
+
+model Bombeiro {
+  id             String @id @default(uuid())
+
+  usuarioId      String @unique @map("usuario_id")
+  usuario        Usuario @relation(fields: [usuarioId], references: [id])
+
+  matricula      String @unique
+  nomeCompleto   String @map("nome_completo")
+
+  telefone       String?
+
+  dataAdmissao   DateTime @map("data_admissao")
+
+  status         BombeiroStatus @default(ATIVO)
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  ferias          Ferias[]
+  atestados       Atestado[]
+  indisponibilidades Indisponibilidade[]
+  plantoes        Plantao[]
+
+  substituicoesOriginais   Substituicao[] @relation("Original")
+  substituicoesSubstituto  Substituicao[] @relation("Substituto")
+
+  historicoPlantoes HistoricoPlantao[]
+
+  @@index([status])
+
+  @@map("bombeiros")
+}
+
+model Feriado {
+  id          String @id @default(uuid())
+
+  data        DateTime @unique
+
+  descricao   String
+
+  tipo        TipoFeriado
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([data])
+
+  @@map("feriados")
+}
+
+model Ferias {
+  id            String @id @default(uuid())
+
+  bombeiroId    String @map("bombeiro_id")
+  bombeiro      Bombeiro @relation(fields: [bombeiroId], references: [id])
+
+  dataInicio    DateTime @map("data_inicio")
+  dataFim       DateTime @map("data_fim")
+
+  observacao    String?
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([bombeiroId])
+  @@index([dataInicio, dataFim])
+
+  @@map("ferias")
+}
+
+model Atestado {
+  id            String @id @default(uuid())
+
+  bombeiroId    String @map("bombeiro_id")
+  bombeiro      Bombeiro @relation(fields: [bombeiroId], references: [id])
+
+  dataInicio    DateTime @map("data_inicio")
+  dataFim       DateTime @map("data_fim")
+
+  observacao    String?
+
+  arquivoUrl    String? @map("arquivo_url")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([bombeiroId])
+  @@index([dataInicio, dataFim])
+
+  @@map("atestados")
+}
+
+model Indisponibilidade {
+  id            String @id @default(uuid())
+
+  bombeiroId    String @map("bombeiro_id")
+  bombeiro      Bombeiro @relation(fields: [bombeiroId], references: [id])
+
+  dataInicio    DateTime @map("data_inicio")
+  dataFim       DateTime @map("data_fim")
+
+  motivo        String
+
+  justificativa String
+
+  status        StatusIndisponibilidade @default(PENDENTE)
+
+  avaliadoPorId String? @map("avaliado_por")
+  avaliadoPor   Usuario? @relation(fields: [avaliadoPorId], references: [id])
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([bombeiroId])
+  @@index([status])
+
+  @@map("indisponibilidades")
+}
+
+model Escala {
+  id             String @id @default(uuid())
+
+  ano            Int
+  mes            Int
+
+  status         StatusEscala @default(RASCUNHO)
+
+  geradaEm       DateTime @default(now()) @map("gerada_em")
+
+  aprovadaPorId  String? @map("aprovada_por")
+  aprovadaPor    Usuario? @relation(fields: [aprovadaPorId], references: [id])
+
+  aprovadaEm     DateTime? @map("aprovada_em")
+
+  publicadaEm    DateTime? @map("publicada_em")
+
+  versao         Int @default(1)
+
+  plantoes       Plantao[]
+
+  @@unique([ano, mes, versao])
+
+  @@index([ano, mes])
+  @@index([status])
+
+  @@map("escalas")
+}
+
+model Plantao {
+  id            String @id @default(uuid())
+
+  escalaId      String @map("escala_id")
+  escala        Escala @relation(fields: [escalaId], references: [id])
+
+  bombeiroId    String @map("bombeiro_id")
+  bombeiro      Bombeiro @relation(fields: [bombeiroId], references: [id])
+
+  dataInicio    DateTime @map("data_inicio")
+  dataFim       DateTime @map("data_fim")
+
+  tipo          TipoEscala
+
+  origem        OrigemPlantao
+
+  observacao    String?
+
+  substituicoes Substituicao[]
+
+  historico     HistoricoPlantao[]
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([escalaId, dataInicio])
+
+  @@index([bombeiroId])
+  @@index([dataInicio])
+  @@index([tipo])
+
+  @@map("plantoes")
+}
+
+model Substituicao {
+  id                   String   @id @default(uuid())
+
+  plantaoId            String   @map("plantao_id")
+  plantao              Plantao  @relation(fields: [plantaoId], references: [id])
+
+  bombeiroOriginalId   String   @map("bombeiro_original_id")
+  bombeiroOriginal     Bombeiro @relation("Original", fields: [bombeiroOriginalId], references: [id])
+
+  bombeiroSubstitutoId String   @map("bombeiro_substituto_id")
+  bombeiroSubstituto   Bombeiro @relation("Substituto", fields: [bombeiroSubstitutoId], references: [id])
+
+  motivo               String
+
+  confirmadaPorId      String   @map("confirmada_por")
+  confirmadaPor        Usuario  @relation(fields: [confirmadaPorId], references: [id])
+
+  confirmadaEm         DateTime @map("confirmada_em")
+
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([plantaoId])
+
+  @@map("substituicoes")
+}
+
+model Notificacao {
+  id          String @id @default(uuid())
+
+  usuarioId   String @map("usuario_id")
+  usuario     Usuario @relation(fields: [usuarioId], references: [id])
+
+  tipo        TipoNotificacao
+
+  titulo      String
+
+  mensagem    String
+
+  lida        Boolean @default(false)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([usuarioId])
+  @@index([lida])
+
+  @@map("notificacoes")
+}
+
+model Auditoria {
+  id             String @id @default(uuid())
+
+  usuarioId      String? @map("usuario_id")
+  usuario        Usuario? @relation(fields: [usuarioId], references: [id])
+
+  entidade       String
+
+  entidadeId     String @map("entidade_id")
+
+  acao           TipoAuditoria
+
+  payloadAntes   Json? @map("payload_antes")
+
+  payloadDepois  Json? @map("payload_depois")
+
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([entidade, entidadeId])
+
+  @@map("auditoria")
+}
+
+model HistoricoPlantao {
+  id            String @id @default(uuid())
+
+  bombeiroId    String @map("bombeiro_id")
+  bombeiro      Bombeiro @relation(fields: [bombeiroId], references: [id])
+
+  plantaoId     String @map("plantao_id")
+  plantao       Plantao @relation(fields: [plantaoId], references: [id])
+
+  data          DateTime
+
+  tipo          TipoEscala
+
+  anoMes        String @map("ano_mes")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([bombeiroId, tipo, data])
+
+  @@index([anoMes])
+
+  @@map("historico_plantoes")
+}
