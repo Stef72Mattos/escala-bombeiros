@@ -32,7 +32,7 @@ function Login() {
         JSON.stringify(dados)
       );
 
-      navigate("/cadastro");
+      navigate("/dashboard");
     } else {
       alert("Login inválido");
     }
