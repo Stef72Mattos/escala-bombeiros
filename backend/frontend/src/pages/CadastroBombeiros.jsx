@@ -1,42 +1,81 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 function CadastroBombeiros() {
+  const [usuarios, setUsuarios] = useState([]);
+  const [carregandoUsuarios, setCarregandoUsuarios] = useState(true);
+
   const [usuarioId, setUsuarioId] = useState("");
   const [matricula, setMatricula] = useState("");
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [telefone, setTelefone] = useState("");
   const [dataAdmissao, setDataAdmissao] = useState("");
 
+  useEffect(() => {
+    buscarUsuariosDisponiveis();
+  }, []);
+
+  async function buscarUsuariosDisponiveis() {
+    try {
+      setCarregandoUsuarios(true);
+
+      const resposta = await fetch(
+        "http://localhost:3000/usuarios/disponiveis-para-bombeiro"
+      );
+
+      if (!resposta.ok) {
+        throw new Error("Não foi possível buscar os usuários");
+      }
+
+      const dados = await resposta.json();
+
+      setUsuarios(dados);
+    } catch (erro) {
+      console.error(erro);
+      alert("Erro ao buscar usuários disponíveis");
+    } finally {
+      setCarregandoUsuarios(false);
+    }
+  }
+
   async function cadastrar(e) {
     e.preventDefault();
 
-    const resposta = await fetch(
-      "http://localhost:3000/bombeiros",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          usuarioId,
-          matricula,
-          nomeCompleto,
-          telefone,
-          dataAdmissao
-        })
+    try {
+      const resposta = await fetch(
+        "http://localhost:3000/bombeiros",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            usuarioId,
+            matricula,
+            nomeCompleto,
+            telefone,
+            dataAdmissao
+          })
+        }
+      );
+
+      const dados = await resposta.json();
+
+      if (resposta.ok) {
+        alert("Bombeiro cadastrado com sucesso!");
+
+        setUsuarioId("");
+        setMatricula("");
+        setNomeCompleto("");
+        setTelefone("");
+        setDataAdmissao("");
+
+        buscarUsuariosDisponiveis();
+      } else {
+        alert(dados.erro || "Erro ao cadastrar bombeiro");
       }
-    );
-
-    if (resposta.ok) {
-      alert("Bombeiro cadastrado com sucesso!");
-
-      setUsuarioId("");
-      setMatricula("");
-      setNomeCompleto("");
-      setTelefone("");
-      setDataAdmissao("");
-    } else {
-      alert("Erro ao cadastrar bombeiro");
+    } catch (erro) {
+      console.error(erro);
+      alert("Não foi possível conectar ao backend");
     }
   }
 
@@ -45,29 +84,53 @@ function CadastroBombeiros() {
       <h1>Cadastro de Bombeiros</h1>
 
       <form onSubmit={cadastrar}>
-        <input
-          placeholder="ID do usuário"
-          value={usuarioId}
-          onChange={(e) => setUsuarioId(e.target.value)}
-        />
+        <label htmlFor="usuarioId">Usuário</label>
 
-        <br /><br />
+        <br />
+
+        {carregandoUsuarios ? (
+          <p>Carregando usuários disponíveis...</p>
+        ) : usuarios.length === 0 ? (
+          <p>Não há usuários bombeiros disponíveis para cadastro.</p>
+        ) : (
+          <select
+            id="usuarioId"
+            value={usuarioId}
+            onChange={(e) => setUsuarioId(e.target.value)}
+            required
+          >
+            <option value="">Selecione um usuário</option>
+
+            {usuarios.map((usuario) => (
+              <option key={usuario.id} value={usuario.id}>
+                {usuario.email}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <br />
+        <br />
 
         <input
           placeholder="Matrícula"
           value={matricula}
           onChange={(e) => setMatricula(e.target.value)}
+          required
         />
 
-        <br /><br />
+        <br />
+        <br />
 
         <input
           placeholder="Nome completo"
           value={nomeCompleto}
           onChange={(e) => setNomeCompleto(e.target.value)}
+          required
         />
 
-        <br /><br />
+        <br />
+        <br />
 
         <input
           placeholder="Telefone"
@@ -75,17 +138,23 @@ function CadastroBombeiros() {
           onChange={(e) => setTelefone(e.target.value)}
         />
 
-        <br /><br />
+        <br />
+        <br />
 
         <input
           type="date"
           value={dataAdmissao}
           onChange={(e) => setDataAdmissao(e.target.value)}
+          required
         />
 
-        <br /><br />
+        <br />
+        <br />
 
-        <button type="submit">
+        <button
+          type="submit"
+          disabled={carregandoUsuarios || usuarios.length === 0}
+        >
           Cadastrar Bombeiro
         </button>
       </form>
