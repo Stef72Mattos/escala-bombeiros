@@ -54,7 +54,13 @@ app.get("/bombeiros/:id", async (req, res) => {
 
 app.get("/usuarios", async (req, res) => {
   try {
-    const usuarios = await prisma.usuario.findMany();
+    const usuarios = await prisma.usuario.findMany({
+      select: {
+        id: true,
+        email: true,
+        role: true
+      }
+    });
 
     res.json(usuarios);
   } catch (error) {
@@ -62,6 +68,30 @@ app.get("/usuarios", async (req, res) => {
 
     res.status(500).json({
       erro: "Erro ao buscar usuários"
+    });
+  }
+});
+
+app.get("/usuarios/disponiveis-para-bombeiro", async (req, res) => {
+  try {
+    const usuarios = await prisma.usuario.findMany({
+      where: {
+        role: "BOMBEIRO",
+        ativo: true,
+        bombeiro: null
+      },
+      select: {
+        id: true,
+        email: true
+      }
+    });
+
+    res.json(usuarios);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      erro: "Erro ao buscar usuários disponíveis"
     });
   }
 });
