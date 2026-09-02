@@ -7,6 +7,7 @@ import ListaUsuarios from "./pages/ListaUsuarios";
 import CadastroBombeiros from "./pages/CadastroBombeiros";
 import EscalaMensal from "./pages/EscalaMensal";
 import ListaBombeiros from "./pages/ListaBombeiros";
+import CadastroAtestados from "./pages/CadastroAtestados";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
       <Route path="/bombeiros" element={<CadastroBombeiros />}/>
       <Route path="/escala" element={<EscalaMensal />}/>
       <Route path="/lista-bombeiros" element={<ListaBombeiros />}/>
+      <Route path="/atestados" element={<CadastroAtestados />}/>
     </Routes>
   );
 }
