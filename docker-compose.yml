@@ -6,9 +6,9 @@ services:
     volumes:
       - ./backend:/app
     ports:
-    - "3000:3000"
-    - "5173:5173"
-    - "5174:5174"
+      - "3000:3000"
+      - "5173:5173"
+      - "5174:5174"
     command: npm start
     tty: true
 
@@ -21,3 +21,8 @@ services:
       POSTGRES_DB: escala_bombeiros
     ports:
       - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

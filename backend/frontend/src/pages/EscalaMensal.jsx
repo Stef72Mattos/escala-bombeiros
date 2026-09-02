@@ -1,51 +1,82 @@
+import { useEffect, useState } from "react";
+
+const diasSemana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+function formatarData(data) {
+  return new Date(`${data}T00:00:00`).toLocaleDateString("pt-BR");
+}
+
 function EscalaMensal() {
+  const hoje = new Date();
+  const [ano, setAno] = useState(hoje.getFullYear());
+  const [mes, setMes] = useState(hoje.getMonth() + 1);
+  const [plantoes, setPlantoes] = useState([]);
+  const [erro, setErro] = useState("");
 
-  const escala = [];
+  useEffect(() => {
+    async function buscarEscala() {
+      try {
+        setErro("");
+        const resposta = await fetch(`http://localhost:3000/escala/mensal?ano=${ano}&mes=${mes}`);
+        const dados = await resposta.json();
 
-  for (let dia = 1; dia <= 30; dia++) {
+        if (!resposta.ok) throw new Error(dados.erro);
+        setPlantoes(dados.plantoes);
+      } catch (erroAtual) {
+        setErro(erroAtual.message || "Não foi possível gerar a escala");
+      }
+    }
 
-    const bombeiro = ((dia - 1) % 12) + 1;
+    buscarEscala();
+  }, [ano, mes]);
 
-    escala.push({
-      dia,
-      bombeiro: `Bombeiro ${String(bombeiro).padStart(2, "0")}`
-    });
-  }
+  const primeiroDia = (new Date(ano, mes - 1, 1).getDay() + 6) % 7;
+  const celulasVazias = Array.from({ length: primeiroDia }, (_, indice) => (
+    <div key={`vazio-${indice}`} />
+  ));
+  const nomeMes = new Date(ano, mes - 1, 1).toLocaleDateString("pt-BR", {
+    month: "long",
+    year: "numeric"
+  });
 
   return (
-    <div
-      style={{
-        maxWidth: "800px",
-        margin: "0 auto",
-        textAlign: "center"
-      }}
-    >
+    <div className="calendar-page">
       <h1>Escala Mensal</h1>
 
-      <table
-        style={{
-          margin: "0 auto",
-          borderCollapse: "collapse",
-          width: "100%"
-        }}
-      >
-        <thead>
-          <tr>
-            <th>Dia</th>
-            <th>Bombeiro Escalado</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {escala.map((item) => (
-            <tr key={item.dia}>
-              <td>{item.dia}</td>
-              <td>{item.bombeiro}</td>
-            </tr>
+      <label>
+        Mês: {" "}
+        <select value={mes} onChange={(e) => setMes(Number(e.target.value))}>
+          {Array.from({ length: 12 }, (_, indice) => (
+            <option key={indice + 1} value={indice + 1}>
+              {new Date(ano, indice, 1).toLocaleDateString("pt-BR", { month: "long" })}
+            </option>
           ))}
-        </tbody>
+        </select>
+      </label>{" "}
+      <label>
+        Ano: {" "}
+        <input type="number" value={ano} onChange={(e) => setAno(Number(e.target.value))} min="2020" />
+      </label>
 
-      </table>
+      <h2 style={{ textTransform: "capitalize" }}>{nomeMes}</h2>
+      {erro && <p style={{ color: "#b91c1c" }}>{erro}</p>}
+
+      <div className="calendar-grid">
+        {diasSemana.map((dia) => (
+          <strong key={dia} className="calendar-weekday">{dia}</strong>
+        ))}
+        {celulasVazias}
+        {plantoes.map((plantao) => (
+          <article key={plantao.data} className="calendar-day">
+            <strong>{formatarData(plantao.data)}</strong>
+            {plantao.bombeiro ? (
+              <p style={{ margin: "12px 0 0" }}>{plantao.bombeiro.nomeCompleto}<br /><small>Matrícula: {plantao.bombeiro.matricula}</small></p>
+            ) : (
+              <p className="unavailable">{plantao.observacao}</p>
+            )}
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

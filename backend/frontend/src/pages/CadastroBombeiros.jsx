@@ -10,6 +10,14 @@ function CadastroBombeiros() {
   const [telefone, setTelefone] = useState("");
   const [dataAdmissao, setDataAdmissao] = useState("");
 
+  function converterParaIso(data) {
+    const partes = data.split("/");
+    if (partes.length !== 3) return null;
+    const [dia, mes, ano] = partes;
+    if (!/^\d{2}$/.test(dia) || !/^\d{2}$/.test(mes) || !/^\d{4}$/.test(ano)) return null;
+    return `${ano}-${mes}-${dia}`;
+  }
+
   useEffect(() => {
     buscarUsuariosDisponiveis();
   }, []);
@@ -39,6 +47,12 @@ function CadastroBombeiros() {
 
   async function cadastrar(e) {
     e.preventDefault();
+    const dataAdmissaoIso = converterParaIso(dataAdmissao);
+
+    if (!dataAdmissaoIso) {
+      alert("Informe a data de admissão no formato DD/MM/AAAA.");
+      return;
+    }
 
     try {
       const resposta = await fetch(
@@ -53,7 +67,7 @@ function CadastroBombeiros() {
             matricula,
             nomeCompleto,
             telefone,
-            dataAdmissao
+            dataAdmissao: dataAdmissaoIso
           })
         }
       );
@@ -142,7 +156,8 @@ function CadastroBombeiros() {
         <br />
 
         <input
-          type="date"
+          type="text"
+          placeholder="Data de admissão (DD/MM/AAAA)"
           value={dataAdmissao}
           onChange={(e) => setDataAdmissao(e.target.value)}
           required

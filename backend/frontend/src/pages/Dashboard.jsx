@@ -31,6 +31,12 @@ function Dashboard() {
 
       <br /><br />
 
+      <Link to="/atestados">
+        <button>Cadastro de Atestados</button>
+      </Link>
+
+      <br /><br />
+
       <Link to="/escala">
         <button>
           Escala Mensal

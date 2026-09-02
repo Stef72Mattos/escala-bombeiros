@@ -139,6 +139,119 @@ app.post("/bombeiros", async (req, res) => {
   }
 });
 
+app.get("/atestados", async (req, res) => {
+  try {
+    const atestados = await prisma.atestado.findMany({
+      include: {
+        bombeiro: {
+          select: { id: true, nomeCompleto: true, matricula: true }
+        }
+      },
+      orderBy: { dataInicio: "asc" }
+    });
+
+    res.json(atestados);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao buscar atestados" });
+  }
+});
+
+app.post("/atestados", async (req, res) => {
+  try {
+    const { bombeiroId, dataInicio, dataFim, observacao } = req.body;
+
+    if (!bombeiroId || !dataInicio || !dataFim) {
+      return res.status(400).json({
+        erro: "Bombeiro, data de início e data de fim são obrigatórios"
+      });
+    }
+
+    if (new Date(dataFim) < new Date(dataInicio)) {
+      return res.status(400).json({
+        erro: "A data final não pode ser anterior à data inicial"
+      });
+    }
+
+    const atestado = await prisma.atestado.create({
+      data: {
+        bombeiroId,
+        dataInicio: new Date(`${dataInicio}T00:00:00`),
+        dataFim: new Date(`${dataFim}T23:59:59`),
+        observacao: observacao || null
+      }
+    });
+
+    res.status(201).json(atestado);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao cadastrar atestado" });
+  }
+});
+
+app.get("/escala/mensal", async (req, res) => {
+  try {
+    const hoje = new Date();
+    const ano = Number(req.query.ano) || hoje.getFullYear();
+    const mes = Number(req.query.mes) || hoje.getMonth() + 1;
+
+    if (mes < 1 || mes > 12) {
+      return res.status(400).json({ erro: "Mês deve estar entre 1 e 12" });
+    }
+
+    const inicioMes = new Date(ano, mes - 1, 1);
+    const fimMes = new Date(ano, mes, 0, 23, 59, 59);
+    const bombeiros = await prisma.bombeiro.findMany({
+      where: { status: "ATIVO" },
+      select: { id: true, nomeCompleto: true, matricula: true },
+      orderBy: { nomeCompleto: "asc" }
+    });
+    const atestados = await prisma.atestado.findMany({
+      where: {
+        dataInicio: { lte: fimMes },
+        dataFim: { gte: inicioMes }
+      },
+      select: { bombeiroId: true, dataInicio: true, dataFim: true }
+    });
+
+    let proximoIndice = 0;
+    const diasNoMes = new Date(ano, mes, 0).getDate();
+    const plantoes = [];
+
+    for (let dia = 1; dia <= diasNoMes; dia += 1) {
+      const data = new Date(ano, mes - 1, dia);
+      let selecionado = null;
+
+      for (let tentativa = 0; tentativa < bombeiros.length; tentativa += 1) {
+        const indice = (proximoIndice + tentativa) % bombeiros.length;
+        const bombeiro = bombeiros[indice];
+        const indisponivel = atestados.some((atestado) =>
+          atestado.bombeiroId === bombeiro.id &&
+          data >= new Date(atestado.dataInicio) &&
+          data <= new Date(atestado.dataFim)
+        );
+
+        if (!indisponivel) {
+          selecionado = bombeiro;
+          proximoIndice = (indice + 1) % bombeiros.length;
+          break;
+        }
+      }
+
+      plantoes.push({
+        data: data.toISOString().slice(0, 10),
+        bombeiro: selecionado,
+        observacao: selecionado ? null : "Nenhum bombeiro disponível"
+      });
+    }
+
+    res.json({ ano, mes, plantoes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao gerar escala mensal" });
+  }
+});
+
 app.post("/login", async (req, res) => {
   try {
     const { email, senha } = req.body;
