@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
-function CadastroAtestados() {
+function CadastroFerias() {
   const [bombeiros, setBombeiros] = useState([]);
-  const [atestados, setAtestados] = useState([]);
+  const [ferias, setFerias] = useState([]);
   const [bombeiroId, setBombeiroId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
@@ -10,15 +10,15 @@ function CadastroAtestados() {
 
   async function carregarDados() {
     try {
-      const [respostaBombeiros, respostaAtestados] = await Promise.all([
+      const [respostaBombeiros, respostaFerias] = await Promise.all([
         fetch("http://localhost:3000/bombeiros"),
-        fetch("http://localhost:3000/atestados")
+        fetch("http://localhost:3000/ferias")
       ]);
 
       setBombeiros(await respostaBombeiros.json());
-      setAtestados(await respostaAtestados.json());
+      setFerias(await respostaFerias.json());
     } catch {
-      alert("Não foi possível carregar os dados de atestados.");
+      alert("Não foi possível carregar os dados de férias.");
     }
   }
 
@@ -59,7 +59,7 @@ function CadastroAtestados() {
       return;
     }
 
-    const resposta = await fetch("http://localhost:3000/atestados", {
+    const resposta = await fetch("http://localhost:3000/ferias", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -73,11 +73,11 @@ function CadastroAtestados() {
     const dados = await resposta.json();
 
     if (!resposta.ok) {
-      alert(dados.erro || "Erro ao cadastrar atestado.");
+      alert(dados.erro || "Erro ao cadastrar férias.");
       return;
     }
 
-    alert("Atestado cadastrado com sucesso!");
+    alert("Férias cadastradas com sucesso!");
     setBombeiroId("");
     setDataInicio("");
     setDataFim("");
@@ -87,10 +87,10 @@ function CadastroAtestados() {
 
   return (
     <div>
-      <h1>Cadastro de Atestados</h1>
+      <h1>Gestão de Férias</h1>
 
       <form onSubmit={cadastrar}>
-        <h2>Novo atestado</h2>
+        <h2>Cadastrar férias</h2>
 
         <select
           value={bombeiroId}
@@ -133,13 +133,13 @@ function CadastroAtestados() {
 
         <br /><br />
 
-        <button type="submit">Cadastrar atestado</button>
+        <button type="submit">Cadastrar férias</button>
       </form>
 
-      <h2 style={{ marginTop: "40px" }}>Atestados cadastrados</h2>
+      <h2 style={{ marginTop: "40px" }}>Férias cadastradas</h2>
 
-      {atestados.length === 0 ? (
-        <p>Nenhum atestado cadastrado.</p>
+      {ferias.length === 0 ? (
+        <p>Nenhum período de férias cadastrado.</p>
       ) : (
         <table style={{ margin: "0 auto" }}>
           <thead>
@@ -151,14 +151,14 @@ function CadastroAtestados() {
             </tr>
           </thead>
           <tbody>
-            {atestados.map((atestado) => (
-              <tr key={atestado.id}>
+            {ferias.map((periodo) => (
+              <tr key={periodo.id}>
                 <td>
-                  {atestado.bombeiro.nomeCompleto} ({atestado.bombeiro.matricula})
+                  {periodo.bombeiro.nomeCompleto} ({periodo.bombeiro.matricula})
                 </td>
-                <td>{formatarData(atestado.dataInicio)}</td>
-                <td>{formatarData(atestado.dataFim)}</td>
-                <td>{atestado.observacao || "-"}</td>
+                <td>{formatarData(periodo.dataInicio)}</td>
+                <td>{formatarData(periodo.dataFim)}</td>
+                <td>{periodo.observacao || "-"}</td>
               </tr>
             ))}
           </tbody>
@@ -168,4 +168,4 @@ function CadastroAtestados() {
   );
 }
 
-export default CadastroAtestados;
+export default CadastroFerias;

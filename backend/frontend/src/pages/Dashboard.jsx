@@ -37,6 +37,12 @@ function Dashboard() {
 
       <br /><br />
 
+            <Link to="/ferias">
+        <button>Gestão de Férias</button>
+      </Link>
+
+      <br /><br />
+
       <Link to="/escala">
         <button>
           Escala Mensal

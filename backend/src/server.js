@@ -188,6 +188,134 @@ app.post("/atestados", async (req, res) => {
     res.status(500).json({ erro: "Erro ao cadastrar atestado" });
   }
 });
+app.get("/ferias", async (req, res) => {
+  try {
+    const ferias = await prisma.ferias.findMany({
+      include: {
+        bombeiro: {
+          select: { id: true, nomeCompleto: true, matricula: true }
+        }
+      },
+      orderBy: { dataInicio: "asc" }
+    });
+
+    res.json(ferias);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao buscar férias" });
+  }
+});
+
+app.post("/ferias", async (req, res) => {
+  try {
+    const { bombeiroId, dataInicio, dataFim, observacao } = req.body;
+
+    if (!bombeiroId || !dataInicio || !dataFim) {
+      return res.status(400).json({
+        erro: "Bombeiro, data de início e data de fim são obrigatórios"
+      });
+    }
+
+    if (new Date(dataFim) < new Date(dataInicio)) {
+      return res.status(400).json({
+        erro: "A data final não pode ser anterior à data inicial"
+      });
+    }
+
+    const ferias = await prisma.ferias.create({
+      data: {
+        bombeiroId,
+        dataInicio: new Date(`${dataInicio}T00:00:00`),
+        dataFim: new Date(`${dataFim}T23:59:59`),
+        observacao: observacao || null
+      }
+    });
+
+    res.status(201).json(ferias);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao cadastrar férias" });
+  }
+});
+app.get("/indisponibilidades", async (req, res) => {
+  try {
+    const indisponibilidades = await prisma.indisponibilidade.findMany({
+      include: {
+        bombeiro: {
+          select: { id: true, nomeCompleto: true, matricula: true }
+        },
+        avaliadoPor: {
+          select: { id: true, email: true }
+        }
+      },
+      orderBy: { dataInicio: "asc" }
+    });
+
+    res.json(indisponibilidades);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao buscar indisponibilidades" });
+  }
+});
+
+app.post("/indisponibilidades", async (req, res) => {
+  try {
+    const { bombeiroId, dataInicio, dataFim, motivo, justificativa } = req.body;
+
+    if (!bombeiroId || !dataInicio || !dataFim || !motivo || !justificativa) {
+      return res.status(400).json({
+        erro: "Bombeiro, período, motivo e justificativa são obrigatórios"
+      });
+    }
+
+    if (new Date(dataFim) < new Date(dataInicio)) {
+      return res.status(400).json({
+        erro: "A data final não pode ser anterior à data inicial"
+      });
+    }
+
+    const indisponibilidade = await prisma.indisponibilidade.create({
+      data: {
+        bombeiroId,
+        dataInicio: new Date(`${dataInicio}T00:00:00`),
+        dataFim: new Date(`${dataFim}T23:59:59`),
+        motivo,
+        justificativa
+      }
+    });
+
+    res.status(201).json(indisponibilidade);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao cadastrar indisponibilidade" });
+  }
+});
+
+app.patch("/indisponibilidades/:id/status", async (req, res) => {
+  try {
+    const { status, avaliadoPorId } = req.body;
+    const statusPermitidos = ["APROVADA", "REJEITADA"];
+
+    if (!statusPermitidos.includes(status)) {
+      return res.status(400).json({
+        erro: "O status deve ser APROVADA ou REJEITADA"
+      });
+    }
+
+    const indisponibilidade = await prisma.indisponibilidade.update({
+      where: { id: req.params.id },
+      data: {
+        status,
+        avaliadoPorId: avaliadoPorId || null
+      }
+    });
+
+    res.json(indisponibilidade);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: "Erro ao avaliar indisponibilidade" });
+  }
+});
 
 app.get("/escala/mensal", async (req, res) => {
   try {
@@ -214,6 +342,25 @@ app.get("/escala/mensal", async (req, res) => {
       select: { bombeiroId: true, dataInicio: true, dataFim: true }
     });
 
+
+        const ferias = await prisma.ferias.findMany({
+      where: {
+        dataInicio: { lte: fimMes },
+        dataFim: { gte: inicioMes }
+      },
+      select: { bombeiroId: true, dataInicio: true, dataFim: true }
+    });
+
+        const indisponibilidadesAprovadas =
+      await prisma.indisponibilidade.findMany({
+        where: {
+          status: "APROVADA",
+          dataInicio: { lte: fimMes },
+          dataFim: { gte: inicioMes }
+        },
+        select: { bombeiroId: true, dataInicio: true, dataFim: true }
+      });
+
     let proximoIndice = 0;
     const diasNoMes = new Date(ano, mes, 0).getDate();
     const plantoes = [];
@@ -225,13 +372,30 @@ app.get("/escala/mensal", async (req, res) => {
       for (let tentativa = 0; tentativa < bombeiros.length; tentativa += 1) {
         const indice = (proximoIndice + tentativa) % bombeiros.length;
         const bombeiro = bombeiros[indice];
-        const indisponivel = atestados.some((atestado) =>
+              const comAtestado = atestados.some((atestado) =>
           atestado.bombeiroId === bombeiro.id &&
           data >= new Date(atestado.dataInicio) &&
           data <= new Date(atestado.dataFim)
         );
 
+        const emFerias = ferias.some((periodoFerias) =>
+          periodoFerias.bombeiroId === bombeiro.id &&
+          data >= new Date(periodoFerias.dataInicio) &&
+          data <= new Date(periodoFerias.dataFim)
+        );
+
+                const comIndisponibilidadeAprovada =
+          indisponibilidadesAprovadas.some((indisponibilidade) =>
+            indisponibilidade.bombeiroId === bombeiro.id &&
+            data >= new Date(indisponibilidade.dataInicio) &&
+            data <= new Date(indisponibilidade.dataFim)
+          );
+
+        const indisponivel =
+          comAtestado || emFerias || comIndisponibilidadeAprovada;
+
         if (!indisponivel) {
+
           selecionado = bombeiro;
           proximoIndice = (indice + 1) % bombeiros.length;
           break;
