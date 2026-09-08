@@ -9,6 +9,8 @@ import EscalaMensal from "./pages/EscalaMensal";
 import ListaBombeiros from "./pages/ListaBombeiros";
 import CadastroAtestados from "./pages/CadastroAtestados";
 import CadastroFerias from "./pages/CadastroFerias";
+import MinhasIndisponibilidades from "./pages/MinhasIndisponibilidades";
+import GestaoIndisponibilidades from "./pages/GestaoIndisponibilidades";
 
 function App() {
   return (
@@ -22,6 +24,8 @@ function App() {
       <Route path="/lista-bombeiros" element={<ListaBombeiros />}/>
       <Route path="/atestados" element={<CadastroAtestados />}/>
       <Route path="/ferias" element={<CadastroFerias />}/>
+      <Route path="/minhas-indisponibilidades" element={<MinhasIndisponibilidades />}/>
+      <Route path="/gestao-indisponibilidades" element={<GestaoIndisponibilidades />}/>
     </Routes>
   );
 }

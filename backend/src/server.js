@@ -239,7 +239,12 @@ app.post("/ferias", async (req, res) => {
 });
 app.get("/indisponibilidades", async (req, res) => {
   try {
+    const where = req.query.bombeiroId
+      ? { bombeiroId: req.query.bombeiroId }
+      : {};
+
     const indisponibilidades = await prisma.indisponibilidade.findMany({
+      where,
       include: {
         bombeiro: {
           select: { id: true, nomeCompleto: true, matricula: true }
@@ -424,6 +429,11 @@ app.post("/login", async (req, res) => {
       where: {
         email,
         senhaHash: senha
+      },
+      include: {
+        bombeiro: {
+          select: { id: true }
+        }
       }
     });
 
@@ -437,7 +447,8 @@ app.post("/login", async (req, res) => {
       id: usuario.id,
       email: usuario.email,
       role: usuario.role,
-      ativo: usuario.ativo
+      ativo: usuario.ativo,
+      bombeiroId: usuario.bombeiro ? usuario.bombeiro.id : null
     });
   } catch (error) {
     console.error(error);
